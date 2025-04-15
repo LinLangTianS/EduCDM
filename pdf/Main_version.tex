@@ -1,0 +1,204 @@
+\documentclass[a4paper,12pt]{ctexart} %A4纸，小四号字体
+\usepackage{multirow}
+\usepackage{fontspec}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{amsthm} % For theorem environment
+\usepackage{bm}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage{setspace}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage[noend]{algpseudocode}
+\usepackage{algorithmicx,algorithm}
+\usepackage{tikz}
+% \usepackage{tcolorbox} % 用于学习小结框
+% \newtcolorbox{learnbox}{colback=blue!5!white, colframe=blue!75!black, title=学习小结}
+% \newtheorem{definition}{定义}[section]
+% // Removed the redefinition of the proof environment as it conflicts with amsthm
+% \newtheorem{theorem}{Theorem}[section] % Define theorem environment
+
+% 设置算法环境
+\floatname{algorithm}{算法}
+\renewcommand{\algorithmicrequire}{\textbf{输入:}}
+\renewcommand{\algorithmicensure}{\textbf{输出:}}
+
+\newfontfamily\yaheiconsola{YaHei.Consolas.1.11b.ttf}
+\setmonofont[
+Contextuals={Alternate},
+ItalicFont = Fira Code Retina Nerd Font Complete.otf     % to avoid font warning
+]{YaHei.Consolas.1.11b.ttf}
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{NavyBlue}{rgb}{0.0, 0.0, 0.50}
+\definecolor{PineGreen}{rgb}{0.0, 0.47, 0.44}
+\lstset
+{
+    tabsize=4,
+    captionpos=b,
+    numbers=left,                    
+    numbersep=1em,                  
+    sensitive=true,
+    showtabs=false, 
+    frame=shadowbox,
+    breaklines=true,
+    keepspaces=true,                 
+    showspaces=false,                
+    showstringspaces=false,
+    breakatwhitespace=false,         
+    basicstyle=\yaheiconsola,
+    keywordstyle=\color{NavyBlue},
+    commentstyle=\color{codegreen},
+    numberstyle=\color{gray},
+    stringstyle=\color{PineGreen!90!black},
+    rulesepcolor=\color{red!20!green!20!blue!20}
+}
+
+% 设置页面边距
+\usepackage[margin=2.5cm]{geometry}
+\setlength{\parindent}{2em}
+
+\title{EM算法}
+\author{舒双林}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\tableofcontents
+\newpage
+
+\section{EM算法的理论基础}
+
+\subsection{EM算法的引入}
+
+EM(Expectation Maximization, 期望最大)算法是一种从不完全数据或含有隐变量的数据中估计参数的方法，由Dempster等人于1977年总结提出。EM算法的基本思想是：在每次迭代中，分两步进行，第一步是求期望(E步)，即求隐变量的期望，第二步是求极大(M步)，即求参数的极大似然估计。
+
+一般地，用$Y$表示观测随机变量的数据，$Z$表示隐变量的数据。$Y$和$Z$组合一起称为完全数据，而观测数据$Y$称为不完全数据。假设给定观测数据$Y$，其概率分布是$P(Y|\theta)$，其中$\theta$是需要估计的模型参数，那么不完全数据$Y$的似然函数为$P(Y|\theta)$，对数似然函数$L(\theta)=\log P(Y|\theta)$；假设$Y$和$Z$的联合概率分布是$P(Y,Z|\theta)$，那么完全数据$Y$和$Z$的对数似然函数为$L(\theta)=\log P(Y,Z|\theta)$。
+
+\subsection{EM算法的数学推导}
+
+对于含有隐变量$Z$的概率模型，直接极大化对数似然函数$L(\theta)=\log P(Y|\theta)$是困难的，因为其含有未观测数据且包含和（或积分）的对数。
+
+假设在第$i$次迭代后$\theta$的估计值是$\theta^{(i)}$。考虑新估计值$\theta$能否使$L(\theta)$增加，对两者作差：
+\begin{equation}
+L(\theta) - L(\theta^{(i)}) = \log \left( \sum_{Z} P(Y|Z,\theta)P(Z|\theta) \right) - \log P(Y|\theta^{(i)})
+\end{equation}
+
+利用Jensen不等式，得到其下界：
+\begin{align}
+L(\theta) - L(\theta^{(i)}) &= \log \left( \sum_{Z} P(Z|Y,\theta^{(i)}) \frac{P(Y|Z,\theta)P(Z|\theta)}{P(Z|Y,\theta^{(i)})} \right) - \log P(Y|\theta^{(i)}) \\
+&\geq \sum_{Z} P(Z|Y,\theta^{(i)}) \log \frac{P(Y|Z,\theta)P(Z|\theta)}{P(Z|Y,\theta^{(i)})} - \log P(Y|\theta^{(i)})
+\end{align}
+
+定义辅助函数$Q(\theta,\theta^{(i)})$：
+\begin{equation}
+Q(\theta,\theta^{(i)}) = \sum_{Z} P(Z|Y,\theta^{(i)}) \log P(Y,Z|\theta)
+\end{equation}
+
+可以证明，最大化$Q(\theta,\theta^{(i)})$可以保证$L(\theta)$不减。因此，EM算法的迭代公式为：
+\begin{equation}
+\theta^{(i+1)} = \arg\max_{\theta} Q(\theta,\theta^{(i)})
+\end{equation}
+
+这等价于：
+\begin{enumerate}
+    \item E步：计算$Q(\theta,\theta^{(i)})$
+    \item M步：求解$\theta^{(i+1)} = \arg\max_{\theta} Q(\theta,\theta^{(i)})$
+\end{enumerate}
+
+EM算法通过不断求解下界的极大化来逼近求解对数似然函数极大化，但不能保证找到全局最优值。
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.6\textwidth]{fig/EM_algorithm.png}
+    \caption{EM算法示意图}
+    \label{fig:em_algorithm}
+\end{figure}
+
+\subsection{EM算法流程}
+
+\begin{center}
+    \begin{minipage}{0.95\textwidth}
+        \begin{algorithm}[H]
+            \caption{EM算法} 
+            \label{alg:em}
+            {\bf 输入:} 观测变量数据$Y$、隐变量数据$Z$、联合分布$P(Y,Z|\theta)$、条件分布$P(Z|Y,\theta)$\\
+            {\bf 过程:} 
+            \begin{algorithmic}[1]
+                \State 选择参数初值$\theta^{(0)}$、最大迭代次数$N$、迭代精度$\delta$，开始迭代
+                \For{$i = 1$ to $N$}
+                \State 令$\theta^{(i-1)}$为第$i-1$次迭代参数$\theta$的估计值
+                \State E-step:计算在给定观测数据$Y$和当前参数$\theta^{(i-1)}$下$Z$的条件概率分布期望
+                \begin{equation}
+                        Q(\theta,\theta^{(i-1)}) = \sum_Z\log P(Y,Z|\theta)P(Z|Y,\theta^{(i-1)})
+                \end{equation}
+                \State M-step:极大化$Q(\theta,\theta^{(i-1)})$，确定第$i$次迭代的参数估计值$\theta^{(i)}$
+                \begin{equation}
+                    \theta^{(i)} = \arg \max_{\theta}Q(\theta,\theta^{(i-1)})
+                \end{equation}
+                \State 计算$\theta^{(i-1)}$与$\theta^{(i)}$的差值的二范数$\delta^{(i)}=||\theta^{(i)}-\theta^{(i-1)}||$
+                \If{$\delta^{(i)}$ < $\delta$}
+                \State 迭代结束，$\hat{\theta} = \theta^{(i)}$为参数的极大似然估计值
+                \Else
+                \State 继续迭代，$i = i + 1$，返回第3步
+                \EndIf
+                \EndFor
+                \State 迭代结束，$\hat{\theta} = \theta^{(N)}$为参数的极大似然估计值
+            \end{algorithmic}
+            {\bf 输出:} 模型的参数估计值$\hat{\theta}$
+        \end{algorithm}
+    \end{minipage}
+\end{center}
+
+\subsection{关于EM算法的说明}
+下面关于EM算法作几点说明：
+\begin{enumerate}
+    \item 参数的初值可以任意选择，但需注意EM算法对初值是敏感的。
+    \item 迭代停止的条件可以是参数的变化小于一个给定的阈值，也可以是$Q$函数的增益小于一个给定的阈值,即
+    \begin{equation}
+    \|\theta^{(i+1)} - \theta^{(i)}\| < \delta_1 \quad \text{or} \quad \|Q(\theta^{(i+1)},\theta^{(i)}) - Q(\theta^{(i)},\theta^{(i)})\| < \delta_2
+    \end{equation}
+    \item M步求$Q(\theta,\theta^{(i)})$的极大化，得到$\theta^{(i+1)}$，完成一次迭代$\theta^{(i)} \to \theta^{(i+1)}$。后续将给出定理保证EM算法的收敛性。
+\end{enumerate}
+
+\subsection{EM算法的收敛性}
+EM算法的收敛性由以下定理保证：
+
+\begin{theorem}[单调性]
+设 $P(Y|\theta)$ 为观测数据的似然函数，$\theta^{(i)}(i=1,2,\cdots)$ 为EM算法得到的参数估计序列，$P(Y|\theta^{(i)})(i=1,2,\cdots)$ 为对应的似然函数序列，则 $P(Y|\theta^{(i)})$ 是单调递增的。
+\begin{equation}
+P(Y|\theta^{(i+1)}) \geq P(Y|\theta^{(i)})
+\end{equation}
+\end{theorem}
+
+\begin{theorem}[收敛性]
+设 $L(\theta) = \log P(Y|\theta)$ 为观测数据的对数似然函数，$\theta^{(i)} (i = 1, 2, \cdots)$ 为 EM 算法得到的参数估计序列，$L(\theta^{(i)}) (i = 1, 2, \cdots)$ 为对应的对数似然函数序列。  
+
+(1)收敛性:
+如果 $P(Y|\theta)$ 有上界，则 $L(\theta^{(i)}) = \log P(Y|\theta^{(i)})$ 收敛到某一值 $L^*$。  
+
+(2)稳定点性质:
+在函数 $Q(\theta, \theta')$ 与 $L(\theta)$ 满足一定条件下，由 EM 算法得到的参数估计序列 $\theta^{(i)}$ 的收敛值 $\theta^*$ 是 $L(\theta)$ 的稳定点。
+\end{theorem}
+
+\subsection{EM算法的应用场景}
+
+EM算法广泛应用于统计学、机器学习和数据挖掘等领域，尤其在处理缺失数据和隐变量模型时表现出色。以下是一些常见的应用场景：
+\begin{itemize}
+    \item 高斯混合模型(GMM)
+    \item 隐马尔可夫模型(HMM)
+    \item 潜在语义分析(LSA)
+    \item 概率主成分分析(PPCA)
+\end{itemize}
+            
+EM算法的优势在于：
+\begin{itemize}
+    \item 能够从不完全数据中有效估计模型参数
+    \item 实现简单，计算效率较高
+    \item 理论基础良好，易于理解和分析
+    \item 可与其他算法结合使用(如变分推断、MCMC等)
+\end{itemize}
+
+\end{document}
